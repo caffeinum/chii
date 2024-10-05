@@ -20,7 +20,7 @@ module.exports = function (channelManager, domain, cdn, basePath) {
   // Add this middleware to check if the request is from localhost
   const ensureLocalhost = async (ctx, next) => {
     const ip = ctx.ip;
-    if (ip === '127.0.0.1' || ip === '::1') {
+    if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip.includes('localhost')) {
       await next();
     } else {
       ctx.status = 403;
@@ -86,7 +86,7 @@ module.exports = function (channelManager, domain, cdn, basePath) {
   }
 
   function createStaticFile(file) {
-    router.get(`${basePath}${file}`, async ctx => {
+    router.get(`${basePath}${file}`, ensureLocalhost, async ctx => {
       await send(ctx, file, {
         root: path.resolve(__dirname, '../../public'),
         maxAge,
