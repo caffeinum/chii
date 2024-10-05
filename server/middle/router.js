@@ -17,7 +17,19 @@ const maxAge = ms('2h');
 module.exports = function (channelManager, domain, cdn, basePath) {
   const router = new Router();
 
-  router.get(basePath, async ctx => {
+  // Add this middleware to check if the request is from localhost
+  const ensureLocalhost = async (ctx, next) => {
+    const ip = ctx.ip;
+    if (ip === '127.0.0.1' || ip === '::1') {
+      await next();
+    } else {
+      ctx.status = 403;
+      ctx.body = 'Access denied. Debugging is only allowed from localhost.';
+    }
+  };
+
+  // Apply the middleware to routes that should only be accessible from localhost
+  router.get(basePath, ensureLocalhost, async ctx => {
     const tpl = await readTpl('index');
     ctx.body = tpl({
       domain,
@@ -46,7 +58,8 @@ module.exports = function (channelManager, domain, cdn, basePath) {
   });
   channelManager.on('target_changed', () => (timestamp = now()));
 
-  router.get(`${basePath}targets`, ctx => {
+  // Apply the localhost check to the targets endpoint
+  router.get(`${basePath}targets`, ensureLocalhost, ctx => {
     const targets = reverse(
       map(pairs(channelManager.getTargets()), item => {
         const ret = {
