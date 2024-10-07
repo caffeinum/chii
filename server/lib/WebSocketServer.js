@@ -37,6 +37,13 @@ module.exports = class WebSocketServer {
       const id = pathname[len - 1];
 
       if (type === 'target' || type === 'client') {
+        // For client (developer) connections, check for authentication
+        if (type === 'client' && !authenticateClient(request)) {
+          socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+          socket.destroy();
+          return;
+        }
+
         wss.handleUpgrade(request, socket, head, ws => {
           ws.type = type;
           ws.id = id;
@@ -58,3 +65,13 @@ module.exports = class WebSocketServer {
     });
   }
 };
+
+const clientAuthToken = 'your-secret-token';
+function authenticateClient(request) {
+  // Check for an authentication token in the request headers or query parameters
+  const token = request.headers['TOKEN'];
+  if (token === clientAuthToken) {
+    return true;
+  }
+  return false;
+}
